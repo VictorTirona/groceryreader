@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grocery Reader</title>
+<style>
+  :root {
+    --bg: #f6f6f3; --card: #fff; --text: #1d1d1b; --muted: #6b6b66; --line: #e3e3de;
+    --accent: #2f7d4f; --accent-soft: #e3f1e8; --danger: #b3261e; --warn-bg: #fff4d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151614; --card: #1f201d; --text: #ecece8; --muted: #a0a09a; --line: #34352f;
+      --accent: #5cbf86; --accent-soft: #23362a; --danger: #ff8a80; --warn-bg: #3a3320;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 1px solid var(--line); }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+  h1 { font-size: 1.15rem; margin: 0; padding: 14px 0 6px; }
+  nav { display: flex; gap: 4px; }
+  nav button { flex: 1; background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 4px; font: inherit; color: var(--muted); cursor: pointer; }
+  nav button[aria-selected="true"] { color: var(--text); border-color: var(--accent); font-weight: 600; }
+  main { padding: 16px 0 48px; }
+  section[hidden] { display: none; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 10px; padding: 10px 16px; font: inherit; cursor: pointer; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .btn.danger { color: var(--danger); }
+  .btn.big { width: 100%; padding: 16px; font-size: 1.05rem; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row > * { flex: 1 1 140px; }
+  label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
+  input, select { width: 100%; font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+  .muted { color: var(--muted); }
+  .error { color: var(--danger); }
+  .warn { background: var(--warn-bg); border-radius: 8px; padding: 8px 12px; font-size: .9rem; }
+  .preview { max-width: 100%; max-height: 260px; display: block; margin: 12px auto 0; border-radius: 8px; }
+  .item { display: grid; grid-template-columns: 1fr 64px 96px; gap: 6px 8px; padding: 12px 0; border-top: 1px solid var(--line); }
+  .item .raw { grid-column: 1 / -1; font-size: .8rem; color: var(--muted); font-family: ui-monospace, monospace; }
+  .item .cat { grid-column: 1 / 3; }
+  .item .del { grid-column: 3; }
+  .item .saved { grid-column: 1 / -1; font-size: .8rem; color: var(--accent); }
+  .item.edited .name, .item.edited .cat { border-color: var(--accent); }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+  .tile b { display: block; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+  .tile span { font-size: .8rem; color: var(--muted); }
+  .bar-row { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 8px 0; font: inherit; color: inherit; cursor: pointer; }
+  .bar-row .top { display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
+  .bar-row .track { height: 10px; background: var(--accent-soft); border-radius: 5px; margin-top: 4px; overflow: hidden; }
+  .bar-row .fill { height: 100%; background: var(--accent); border-radius: 5px; }
+  .bar-row[aria-expanded="true"] .top { font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  td, th { padding: 6px 4px; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .receipt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; cursor: pointer; }
+  .spinner { width: 18px; height: 18px; border: 3px solid var(--accent-soft); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  input[type=file] { display: none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>🧾 Grocery Reader</h1>
+    <nav role="tablist">
+      <button role="tab" data-tab="scan" aria-selected="true">Scan</button>
+      <button role="tab" data-tab="dashboard" aria-selected="false">Spending</button>
+      <button role="tab" data-tab="receipts" aria-selected="false">Receipts</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <!-- Scan -->
+  <section id="scan">
+    <div class="card" id="pick">
+      <p style="margin-top:0">Photograph a receipt. Claude reads every line and sorts it into a category, and you check the result before it's saved. Fix a name or category once and it's remembered for future receipts.</p>
+      <div class="row">
+        <button class="btn primary big" id="camera-btn">📷 Take photo</button>
+        <button class="btn big" id="upload-btn">Upload image</button>
+      </div>
+      <input type="file" id="camera" accept="image/*" capture="environment">
+      <input type="file" id="upload" accept="image/*">
+      <img id="preview" class="preview" alt="Receipt preview" hidden>
+      <p id="scan-status" class="muted" aria-live="polite"></p>
+    </div>
+
+    <form class="card" id="review" hidden>
+      <h2 style="margin-top:0;font-size:1.05rem">Check the items</h2>
+      <div class="row">
+        <div><label for="r-store">Store</label><input id="r-store"></div>
+        <div><label for="r-date">Date</label><input id="r-date" type="date" required></div>
+      </div>
+      <div id="r-items" style="margin-top:12px"></div>
+      <button type="button" class="btn" id="add-item" style="margin:8px 0 16px">+ Add item</button>
+      <div class="row">
+        <div><label for="r-tax">Tax</label><input id="r-tax" type="number" step="0.01" inputmode="decimal"></div>
+        <div><label for="r-total">Receipt total</label><input id="r-total" type="number" step="0.01" inputmode="decimal"></div>
+      </div>
+      <p id="r-check" class="warn" hidden></p>
+      <div class="row" style="margin-top:16px">
+        <button type="button" class="btn" id="discard">Discard</button>
+        <button type="submit" class="btn primary">Save receipt</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- Dashboard -->
+  <section id="dashboard" hidden>
+    <div class="row" style="margin-bottom:12px;align-items:end">
+      <div><label for="period">Period</label>
+        <select id="period">
+          <option value="this-month">This month</option>
+          <option value="last-month">Last month</option>
+          <option value="3-months">Last 3 months</option>
+          <option value="this-year">This year</option>
+          <option value="all" selected>All time</option>
+        </select>
+      </div>
+      <a class="btn" href="/api/export.csv" style="flex:0 0 auto;text-decoration:none">Export CSV</a>
+    </div>
+    <div class="tiles" style="margin-bottom:16px">
+      <div class="tile"><b id="t-total">–</b><span>spent on items</span></div>
+      <div class="tile"><b id="t-receipts">–</b><span>receipts</span></div>
+      <div class="tile"><b id="t-tax">–</b><span>tax</span></div>
+    </div>
+    <div class="card">
+      <h2 style="margin-top:0;font-size:1.05rem">Where it goes</h2>
+      <p class="muted" style="margin-top:-6px;font-size:.9rem">Tap a category to see its items.</p>
+      <div id="bars"></div>
+    </div>
+  </section>
+
+  <!-- Receipts -->
+  <section id="receipts" hidden>
+    <div id="receipt-list"></div>
+  </section>
+</main>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+let CATEGORIES = [];
+let currency = "USD";
+
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const money = (n, cur = currency) => {
+  try { return new Intl.NumberFormat(undefined, { style: "currency", currency: cur }).format(n); }
+  catch { return Number(n).toFixed(2); }
+};
+const catOptions = (selected) => CATEGORIES.map((c) => `<option ${c === selected ? "selected" : ""}>${esc(c)}</option>`).join("");
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, opts);
+  if (!res.ok) {
+    let msg = `Request failed (${res.status})`;
+    try { const body = await res.json(); msg = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail); } catch {}
+    throw new Error(msg);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+// ---- Tabs ----
+const views = { dashboard: loadDashboard, receipts: loadReceipts };
+document.querySelectorAll("nav button").forEach((btn) => btn.addEventListener("click", () => {
+  document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-selected", b === btn));
+  document.querySelectorAll("main > section").forEach((s) => (s.hidden = s.id !== btn.dataset.tab));
+  views[btn.dataset.tab]?.();
+}));
+
+// ---- Scan ----
+$("#camera-btn").onclick = () => $("#camera").click();
+$("#upload-btn").onclick = () => $("#upload").click();
+$("#camera").onchange = $("#upload").onchange = (e) => e.target.files[0] && scan(e.target.files[0]);
+
+// Phone photos are often 5–15 MB; shrink to a size Claude reads well before uploading.
+async function shrink(file, maxSide = 2000) {
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.88));
+}
+
+async function scan(file) {
+  const status = $("#scan-status");
+  $("#review").hidden = true;
+  const preview = $("#preview");
+  preview.src = URL.createObjectURL(file);
+  preview.hidden = false;
+  status.className = "muted";
+  status.innerHTML = `<span style="display:inline-flex;gap:8px;align-items:center"><span class="spinner"></span> Reading receipt… this takes 10–30 seconds.</span>`;
+  try {
+    let blob;
+    try { blob = await shrink(file); } catch { blob = file; }
+    const form = new FormData();
+    form.append("image", blob, "receipt.jpg");
+    const draft = await api("/api/scan", { method: "POST", body: form });
+    status.textContent = `Found ${draft.items.length} items. Fix anything that looks wrong, then save.`;
+    showReview(draft);
+  } catch (err) {
+    status.className = "error";
+    status.textContent = err.message;
+  } finally {
+    $("#camera").value = $("#upload").value = "";
+  }
+}
+
+// One editable line item. The printed receipt text is shown above so you can see what Claude was reading.
+function itemFields(item) {
+  return `
+    ${item.raw_text ? `<div class="raw">Receipt says: ${esc(item.raw_text)}</div>` : ""}
+    <input class="name" aria-label="Item name" value="${esc(item.name)}" required>
+    <input class="qty" aria-label="Quantity" type="number" step="any" min="0" inputmode="decimal" value="${esc(item.quantity ?? 1)}">
+    <input class="price" aria-label="Price" type="number" step="0.01" inputmode="decimal" value="${esc(item.price)}" required>
+    <select class="cat" aria-label="Category">${catOptions(item.category)}</select>`;
+}
+
+function itemRow(item = { name: "", raw_text: "", quantity: 1, price: "", category: "Other" }) {
+  const div = document.createElement("div");
+  div.className = "item";
+  div.dataset.raw = item.raw_text || "";
+  div.dataset.aiName = item.name;
+  div.dataset.aiCat = item.category;
+  div.innerHTML = itemFields(item) + `<button type="button" class="btn danger del" aria-label="Remove item">Remove</button>`;
+  div.querySelector(".del").onclick = () => { div.remove(); checkTotals(); };
+  div.querySelector(".price").oninput = checkTotals;
+  div.oninput = div.onchange = () => div.classList.toggle("edited", isCorrected(div));
+  return div;
+}
+
+const isCorrected = (row) => Boolean(row.dataset.raw) &&
+  (row.querySelector(".name").value.trim() !== row.dataset.aiName || row.querySelector(".cat").value !== row.dataset.aiCat);
+
+function showReview(draft) {
+  currency = draft.currency || "USD";
+  $("#r-store").value = draft.store || "";
+  $("#r-date").value = draft.purchased_on || new Date().toISOString().slice(0, 10);
+  $("#r-tax").value = draft.tax ?? 0;
+  $("#r-total").value = draft.total ?? "";
+  const list = $("#r-items");
+  list.replaceChildren(...draft.items.map(itemRow));
+  $("#review").dataset.currency = currency;
+  $("#review").hidden = false;
+  checkTotals();
+}
+
+function readItems() {
+  return [...document.querySelectorAll("#r-items .item")].map((row) => ({
+    name: row.querySelector(".name").value.trim(),
+    raw_text: row.dataset.raw,
+    quantity: Number(row.querySelector(".qty").value) || 1,
+    price: Number(row.querySelector(".price").value),
+    category: row.querySelector(".cat").value,
+    corrected: isCorrected(row),
+  }));
+}
+
+// Flag when the items + tax don't add up to the printed total — usually a missed or misread line.
+function checkTotals() {
+  const total = parseFloat($("#r-total").value);
+  const sum = readItems().reduce((s, i) => s + i.price, 0) + (parseFloat($("#r-tax").value) || 0);
+  const box = $("#r-check");
+  if (!isNaN(total) && Math.abs(sum - total) > 0.01) {
+    box.textContent = `Items + tax add up to ${money(sum)}, but the receipt total is ${money(total)}. Check for a missed or misread line.`;
+    box.hidden = false;
+  } else {
+    box.hidden = true;
+  }
+}
+$("#r-tax").oninput = $("#r-total").oninput = checkTotals;
+$("#add-item").onclick = () => { $("#r-items").append(itemRow()); };
+$("#discard").onclick = () => { $("#review").hidden = true; $("#preview").hidden = true; $("#scan-status").textContent = ""; };
+
+$("#review").onsubmit = async (e) => {
+  e.preventDefault();
+  const total = parseFloat($("#r-total").value);
+  const body = {
+    store: $("#r-store").value.trim() || null,
+    purchased_on: $("#r-date").value,
+    currency: $("#review").dataset.currency,
+    tax: parseFloat($("#r-tax").value) || 0,
+    total: isNaN(total) ? null : total,
+    items: readItems(),
+  };
+  try {
+    await api("/api/receipts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    $("#review").hidden = true;
+    $("#preview").hidden = true;
+    $("#scan-status").className = "muted";
+    $("#scan-status").textContent = `Saved ${body.items.length} items from ${body.store || "receipt"}. Scan another, or check the Spending tab.`;
+  } catch (err) {
+    alert(err.message);
+  }
+};
+
+// ---- Dashboard ----
+function periodRange(p) {
+  const now = new Date();
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const y = now.getFullYear(), m = now.getMonth();
+  switch (p) {
+    case "this-month": return { start: iso(new Date(Date.UTC(y, m, 1))) };
+    case "last-month": return { start: iso(new Date(Date.UTC(y, m - 1, 1))), end: iso(new Date(Date.UTC(y, m, 0))) };
+    case "3-months": return { start: iso(new Date(Date.UTC(y, m - 2, 1))) };
+    case "this-year": return { start: `${y}-01-01` };
+    default: return {};
+  }
+}
+const query = (params) => new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
+$("#period").onchange = loadDashboard;
+
+async function loadDashboard() {
+  const range = periodRange($("#period").value);
+  const s = await api(`/api/summary?${query(range)}`);
+  $("#t-total").textContent = money(s.items_total);
+  $("#t-receipts").textContent = s.receipt_count;
+  $("#t-tax").textContent = money(s.tax);
+  const bars = $("#bars");
+  if (!s.by_category.length) {
+    bars.innerHTML = `<p class="muted">No receipts in this period yet. Scan one to get started.</p>`;
+    return;
+  }
+  const max = s.by_category[0].total;
+  bars.innerHTML = s.by_category.map((c) => `
+    <button class="bar-row" data-cat="${esc(c.category)}" aria-expanded="false">
+      <div class="top"><span>${esc(c.category)}</span><span>${money(c.total)} <span class="muted">· ${Math.round(c.share * 100)}%</span></span></div>
+      <div class="track"><div class="fill" style="width:${(c.total / max) * 100}%"></div></div>
+    </button>
+    <div class="cat-items" hidden></div>`).join("");
+  bars.querySelectorAll(".bar-row").forEach((btn) => btn.onclick = async () => {
+    const panel = btn.nextElementSibling;
+    const open = btn.getAttribute("aria-expanded") === "true";
+    btn.setAttribute("aria-expanded", !open);
+    panel.hidden = open;
+    if (open) return;
+    const items = await api(`/api/items?${query({ ...range, category: btn.dataset.cat })}`);
+    panel.innerHTML = `<table><tbody>${items.map((i) => `
+      <tr><td>${esc(i.name)}<div class="muted" style="font-size:.8rem">${esc(i.purchased_on)} · ${esc(i.store || "")}</div></td>
+      <td class="num">${money(i.price)}</td></tr>`).join("")}</tbody></table>`;
+  });
+}
+
+// ---- Receipts ----
+async function loadReceipts() {
+  const list = $("#receipt-list");
+  const receipts = await api("/api/receipts");
+  if (!receipts.length) {
+    list.innerHTML = `<p class="muted">No receipts saved yet.</p>`;
+    return;
+  }
+  list.innerHTML = receipts.map((r) => `
+    <div class="card" data-id="${r.id}">
+      <div class="receipt-head"><div><b>${esc(r.store || "Unknown store")}</b> <span class="muted">· ${esc(r.purchased_on)}</span></div>
+      <div class="num">${money(r.total ?? r.items_total + r.tax, r.currency)}</div></div>
+      <div class="muted" style="font-size:.9rem">${r.item_count} items</div>
+      <div class="detail" hidden></div>
+    </div>`).join("");
+  list.querySelectorAll(".card").forEach((card) => card.querySelector(".receipt-head").onclick = () => toggleReceipt(card));
+}
+
+async function toggleReceipt(card) {
+  const detail = card.querySelector(".detail");
+  if (!detail.hidden) { detail.hidden = true; return; }
+  const r = await api(`/api/receipts/${card.dataset.id}`);
+  detail.innerHTML = `
+    <p class="muted" style="font-size:.85rem;margin:8px 0 0">Edit any field; changes save automatically.</p>
+    ${r.items.map((i) => `<div class="item" data-item="${i.id}">${itemFields(i)}<span class="saved" aria-live="polite"></span></div>`).join("")}
+    <p class="muted" style="margin:8px 0 0">Tax: ${money(r.tax, r.currency)}</p>
+    <button class="btn danger" style="margin-top:12px">Delete receipt</button>`;
+  detail.querySelectorAll(".item").forEach((row) => row.onchange = async (e) => {
+    const field = { name: "name", qty: "quantity", price: "price", cat: "category" }[e.target.className];
+    if (!field) return;
+    const value = field === "name" || field === "category" ? e.target.value.trim() : Number(e.target.value);
+    const note = row.querySelector(".saved");
+    try {
+      await api(`/api/items/${row.dataset.item}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: value }) });
+      note.textContent = field === "name" || field === "category" ? "Saved — will be remembered for next time" : "Saved";
+    } catch (err) { note.textContent = ""; alert(err.message); }
+  });
+  detail.querySelector(".btn.danger").onclick = async () => {
+    if (!confirm("Delete this receipt and all its items?")) return;
+    await api(`/api/receipts/${card.dataset.id}`, { method: "DELETE" });
+    card.remove();
+  };
+  detail.hidden = false;
+}
+
+api("/api/categories").then((cats) => (CATEGORIES = cats.map((c) => c.name)));
+</script>
+</body>
+</html>
