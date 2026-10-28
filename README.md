@@ -57,8 +57,8 @@ Categories are defined in `app/categories.py`. Edit that file to add or rename o
 
 ## Cost
 
-Each scan is one Claude API call with one image. A typical receipt costs roughly one to three
-US cents. The model is set in `app/extract.py`.
+Each scan is one Claude API call with one image. Expect a few US cents per receipt, a bit more for
+very long ones. The model is set in `app/extract.py`.
 
 ## Development
 
