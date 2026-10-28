@@ -2,6 +2,7 @@
 
 import csv
 import io
+import sqlite3
 from datetime import date
 from pathlib import Path
 
@@ -11,11 +12,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator
 
 from . import extract
-from .categories import CATEGORIES, CATEGORY_NAMES
-from .db import connect, load_corrections, remember_correction
+from .categories import FALLBACK_CATEGORY
+from .db import connect, get_categories, load_corrections, remember_correction
 
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
+MONTH_PATTERN = r"^\d{4}-\d{2}$"
 
 app = FastAPI(title="Grocery Reader")
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
@@ -30,13 +32,6 @@ class Item(BaseModel):
     # Set by the UI when the user changed the name or category Claude suggested.
     corrected: bool = False
 
-    @field_validator("category")
-    @classmethod
-    def known_category(cls, v: str) -> str:
-        if v not in CATEGORIES:
-            raise ValueError(f"unknown category {v!r}")
-        return v
-
 
 class Receipt(BaseModel):
     store: str | None = None
@@ -47,18 +42,52 @@ class Receipt(BaseModel):
     items: list[Item] = Field(min_length=1)
 
 
+class ReceiptUpdate(BaseModel):
+    store: str | None = None
+    purchased_on: date | None = None
+    tax: float | None = None
+    total: float | None = None
+
+
 class ItemUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1)
     quantity: float | None = None
     price: float | None = None
     category: str | None = None
 
-    @field_validator("category")
+
+class CategoryIn(BaseModel):
+    name: str = Field(min_length=1, max_length=40)
+    description: str = Field(default="", max_length=300)
+
+    @field_validator("name", "description")
     @classmethod
-    def known_category(cls, v: str | None) -> str | None:
-        if v is not None and v not in CATEGORIES:
-            raise ValueError(f"unknown category {v!r}")
-        return v
+    def strip(cls, v: str) -> str:
+        return " ".join(v.split())
+
+
+class CategoryUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=40)
+    description: str | None = Field(default=None, max_length=300)
+
+    @field_validator("name", "description")
+    @classmethod
+    def strip(cls, v: str | None) -> str | None:
+        return None if v is None else " ".join(v.split())
+
+
+def require_categories(conn, names) -> None:
+    known = get_categories(conn)
+    unknown = sorted({n for n in names if n not in known})
+    if unknown:
+        raise HTTPException(422, f"Unknown category: {', '.join(unknown)}")
+
+
+def get_category_row(conn, category_id: int) -> sqlite3.Row:
+    row = conn.execute("SELECT * FROM categories WHERE id = ?", (category_id,)).fetchone()
+    if row is None:
+        raise HTTPException(404, "Category not found.")
+    return row
 
 
 @app.get("/")
@@ -66,10 +95,68 @@ def index():
     return FileResponse(STATIC / "index.html")
 
 
-@app.get("/api/categories")
-def categories():
-    return [{"name": name, "description": desc} for name, desc in CATEGORIES.items()]
+# ---- Categories ----
 
+@app.get("/api/categories")
+def list_categories():
+    with connect() as conn:
+        rows = conn.execute(
+            """SELECT c.id, c.name, c.description, COUNT(i.id) AS item_count
+               FROM categories c LEFT JOIN items i ON i.category = c.name
+               GROUP BY c.id ORDER BY c.id"""
+        ).fetchall()
+    return [{**dict(r), "locked": r["name"] == FALLBACK_CATEGORY} for r in rows]
+
+
+@app.post("/api/categories", status_code=201)
+def create_category(category: CategoryIn):
+    with connect() as conn:
+        try:
+            cur = conn.execute(
+                "INSERT INTO categories (name, description) VALUES (?, ?)", (category.name, category.description)
+            )
+        except sqlite3.IntegrityError as e:
+            raise HTTPException(409, f"A category called {category.name!r} already exists.") from e
+    return {"id": cur.lastrowid, **category.model_dump()}
+
+
+@app.patch("/api/categories/{category_id}")
+def update_category(category_id: int, update: CategoryUpdate):
+    with connect() as conn:
+        row = get_category_row(conn, category_id)
+        old_name = row["name"]
+        new_name = update.name if update.name is not None else old_name
+        if new_name != old_name and old_name == FALLBACK_CATEGORY:
+            raise HTTPException(400, f"{FALLBACK_CATEGORY!r} can't be renamed.")
+        description = update.description if update.description is not None else row["description"]
+        try:
+            conn.execute(
+                "UPDATE categories SET name = ?, description = ? WHERE id = ?", (new_name, description, category_id)
+            )
+        except sqlite3.IntegrityError as e:
+            raise HTTPException(409, f"A category called {new_name!r} already exists.") from e
+        if new_name != old_name:
+            conn.execute("UPDATE items SET category = ? WHERE category = ?", (new_name, old_name))
+            conn.execute("UPDATE corrections SET category = ? WHERE category = ?", (new_name, old_name))
+    return {"id": category_id, "name": new_name, "description": description}
+
+
+@app.delete("/api/categories/{category_id}", status_code=204)
+def delete_category(category_id: int, move_to: str = Query(FALLBACK_CATEGORY)):
+    """Delete a category, moving its items (and remembered corrections) to another one."""
+    with connect() as conn:
+        name = get_category_row(conn, category_id)["name"]
+        if name == FALLBACK_CATEGORY:
+            raise HTTPException(400, f"{FALLBACK_CATEGORY!r} can't be deleted.")
+        if move_to == name:
+            raise HTTPException(400, "Choose a different category to move the items to.")
+        require_categories(conn, [move_to])
+        conn.execute("UPDATE items SET category = ? WHERE category = ?", (move_to, name))
+        conn.execute("UPDATE corrections SET category = ? WHERE category = ?", (move_to, name))
+        conn.execute("DELETE FROM categories WHERE id = ?", (category_id,))
+
+
+# ---- Scanning and receipts ----
 
 @app.post("/api/scan")
 async def scan(image: UploadFile = File(...)):
@@ -77,8 +164,12 @@ async def scan(image: UploadFile = File(...)):
     data = await image.read()
     if len(data) > MAX_UPLOAD_BYTES:
         raise HTTPException(413, "Image is larger than 10 MB.")
+    with connect() as conn:
+        categories = get_categories(conn)
     try:
-        return extract.extract_receipt(data, image.content_type or "", corrections=load_corrections())
+        return extract.extract_receipt(
+            data, image.content_type or "", categories, corrections=load_corrections()
+        )
     except extract.ExtractionError as e:
         raise HTTPException(422, str(e)) from e
 
@@ -86,6 +177,7 @@ async def scan(image: UploadFile = File(...)):
 @app.post("/api/receipts", status_code=201)
 def save_receipt(receipt: Receipt):
     with connect() as conn:
+        require_categories(conn, [i.category for i in receipt.items])
         cur = conn.execute(
             "INSERT INTO receipts (store, purchased_on, currency, tax, total) VALUES (?, ?, ?, ?, ?)",
             (receipt.store, receipt.purchased_on.isoformat(), receipt.currency, receipt.tax, receipt.total),
@@ -102,12 +194,14 @@ def save_receipt(receipt: Receipt):
 
 
 @app.get("/api/receipts")
-def list_receipts():
+def list_receipts(month: str | None = Query(None, pattern=MONTH_PATTERN)):
+    where, params = _date_filter(None, None, month)
     with connect() as conn:
         rows = conn.execute(
-            """SELECT r.*, COUNT(i.id) AS item_count, COALESCE(SUM(i.price), 0) AS items_total
-               FROM receipts r LEFT JOIN items i ON i.receipt_id = r.id
-               GROUP BY r.id ORDER BY r.purchased_on DESC, r.id DESC"""
+            f"""SELECT r.*, COUNT(i.id) AS item_count, COALESCE(SUM(i.price), 0) AS items_total
+                FROM receipts r LEFT JOIN items i ON i.receipt_id = r.id{where}
+                GROUP BY r.id ORDER BY r.purchased_on DESC, r.id DESC""",
+            params,
         ).fetchall()
     return [dict(r) for r in rows]
 
@@ -120,6 +214,26 @@ def get_receipt(receipt_id: int):
             raise HTTPException(404, "Receipt not found.")
         items = conn.execute("SELECT * FROM items WHERE receipt_id = ? ORDER BY id", (receipt_id,)).fetchall()
     return {**dict(receipt), "items": [dict(i) for i in items]}
+
+
+@app.patch("/api/receipts/{receipt_id}")
+def update_receipt(receipt_id: int, update: ReceiptUpdate):
+    fields = update.model_dump(exclude_unset=True)
+    if "purchased_on" in fields:
+        if fields["purchased_on"] is None:
+            raise HTTPException(422, "A receipt needs a date.")
+        fields["purchased_on"] = fields["purchased_on"].isoformat()
+    if "tax" in fields and fields["tax"] is None:
+        fields["tax"] = 0
+    if not fields:
+        raise HTTPException(400, "Nothing to update.")
+    with connect() as conn:
+        assignments = ", ".join(f"{k} = ?" for k in fields)
+        cur = conn.execute(f"UPDATE receipts SET {assignments} WHERE id = ?", (*fields.values(), receipt_id))
+        if cur.rowcount == 0:
+            raise HTTPException(404, "Receipt not found.")
+        row = conn.execute("SELECT * FROM receipts WHERE id = ?", (receipt_id,)).fetchone()
+    return dict(row)
 
 
 @app.delete("/api/receipts/{receipt_id}", status_code=204)
@@ -135,6 +249,8 @@ def update_item(item_id: int, update: ItemUpdate):
     if not fields:
         raise HTTPException(400, "Nothing to update.")
     with connect() as conn:
+        if "category" in fields:
+            require_categories(conn, [fields["category"]])
         assignments = ", ".join(f"{k} = ?" for k in fields)
         cur = conn.execute(f"UPDATE items SET {assignments} WHERE id = ?", (*fields.values(), item_id))
         if cur.rowcount == 0:
@@ -150,7 +266,9 @@ def list_corrections():
     return [{"raw_text": raw, **c} for raw, c in load_corrections(limit=10_000).items()]
 
 
-def _date_filter(start: date | None, end: date | None) -> tuple[str, list]:
+# ---- Reporting ----
+
+def _date_filter(start: date | None, end: date | None, month: str | None = None) -> tuple[str, list]:
     clauses, params = [], []
     if start:
         clauses.append("r.purchased_on >= ?")
@@ -158,24 +276,39 @@ def _date_filter(start: date | None, end: date | None) -> tuple[str, list]:
     if end:
         clauses.append("r.purchased_on <= ?")
         params.append(end.isoformat())
+    if month:
+        clauses.append("substr(r.purchased_on, 1, 7) = ?")
+        params.append(month)
     return (" WHERE " + " AND ".join(clauses) if clauses else ""), params
 
 
+@app.get("/api/months")
+def months():
+    """One row per month that has receipts, newest first."""
+    with connect() as conn:
+        rows = conn.execute(
+            """SELECT substr(r.purchased_on, 1, 7) AS month,
+                      COUNT(*) AS receipt_count,
+                      COALESCE(SUM(r.tax), 0) AS tax,
+                      COALESCE(SUM((SELECT SUM(price) FROM items WHERE receipt_id = r.id)), 0) AS items_total
+               FROM receipts r GROUP BY month ORDER BY month DESC"""
+        ).fetchall()
+    return [{**dict(r), "items_total": round(r["items_total"], 2), "tax": round(r["tax"], 2)} for r in rows]
+
+
 @app.get("/api/summary")
-def summary(start: date | None = Query(None), end: date | None = Query(None)):
-    """Spending per category (and per month) for receipts dated between start and end."""
-    where, params = _date_filter(start, end)
+def summary(
+    start: date | None = Query(None),
+    end: date | None = Query(None),
+    month: str | None = Query(None, pattern=MONTH_PATTERN),
+):
+    """Spending per category for receipts in a month (YYYY-MM) or between start and end."""
+    where, params = _date_filter(start, end, month)
     with connect() as conn:
         by_category = conn.execute(
             f"""SELECT i.category, SUM(i.price) AS total, COUNT(*) AS item_count
                 FROM items i JOIN receipts r ON r.id = i.receipt_id{where}
                 GROUP BY i.category ORDER BY total DESC""",
-            params,
-        ).fetchall()
-        by_month = conn.execute(
-            f"""SELECT substr(r.purchased_on, 1, 7) AS month, i.category, SUM(i.price) AS total
-                FROM items i JOIN receipts r ON r.id = i.receipt_id{where}
-                GROUP BY month, i.category ORDER BY month""",
             params,
         ).fetchall()
         totals = conn.execute(
@@ -195,7 +328,6 @@ def summary(start: date | None = Query(None), end: date | None = Query(None)):
             }
             for r in by_category
         ],
-        "by_month": [dict(r) for r in by_month],
     }
 
 
@@ -204,11 +336,10 @@ def list_items(
     category: str | None = Query(None),
     start: date | None = Query(None),
     end: date | None = Query(None),
+    month: str | None = Query(None, pattern=MONTH_PATTERN),
 ):
-    where, params = _date_filter(start, end)
+    where, params = _date_filter(start, end, month)
     if category:
-        if category not in CATEGORIES:
-            raise HTTPException(400, f"Unknown category. Use one of: {', '.join(CATEGORY_NAMES)}")
         where += (" AND " if where else " WHERE ") + "i.category = ?"
         params.append(category)
     with connect() as conn:

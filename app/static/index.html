@@ -20,22 +20,29 @@
   header { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 1px solid var(--line); }
   .wrap { max-width: 760px; margin: 0 auto; padding: 0 16px; }
   h1 { font-size: 1.15rem; margin: 0; padding: 14px 0 6px; }
-  nav { display: flex; gap: 4px; }
-  nav button { flex: 1; background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 4px; font: inherit; color: var(--muted); cursor: pointer; }
+  h2 { margin: 0 0 8px; font-size: 1.05rem; }
+  h3 { margin: 20px 0 8px; font-size: .95rem; color: var(--muted); font-weight: 600; display: flex; justify-content: space-between; }
+  nav { display: flex; gap: 2px; }
+  nav button { flex: 1; background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 2px; font: inherit; font-size: .95rem; color: var(--muted); cursor: pointer; }
   nav button[aria-selected="true"] { color: var(--text); border-color: var(--accent); font-weight: 600; }
   main { padding: 16px 0 48px; }
   section[hidden] { display: none; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 10px; padding: 10px 16px; font: inherit; cursor: pointer; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid var(--line); background: var(--card); color: var(--text); border-radius: 10px; padding: 10px 16px; font: inherit; cursor: pointer; text-decoration: none; }
+  .btn:disabled { opacity: .45; cursor: default; }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
   .btn.danger { color: var(--danger); }
+  .btn.small { padding: 6px 12px; font-size: .9rem; }
   .btn.big { width: 100%; padding: 16px; font-size: 1.05rem; }
+  .btn.icon { padding: 8px 14px; font-size: 1.2rem; line-height: 1; }
   .row { display: flex; gap: 12px; flex-wrap: wrap; }
   .row > * { flex: 1 1 140px; }
   label { display: block; font-size: .85rem; color: var(--muted); margin-bottom: 4px; }
   input, select { width: 100%; font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
   .muted { color: var(--muted); }
+  .small { font-size: .85rem; }
   .error { color: var(--danger); }
+  .ok { color: var(--accent); }
   .warn { background: var(--warn-bg); border-radius: 8px; padding: 8px 12px; font-size: .9rem; }
   .preview { max-width: 100%; max-height: 260px; display: block; margin: 12px auto 0; border-radius: 8px; }
   .item { display: grid; grid-template-columns: 1fr 64px 96px; gap: 6px 8px; padding: 12px 0; border-top: 1px solid var(--line); }
@@ -44,19 +51,26 @@
   .item .del { grid-column: 3; }
   .item .saved { grid-column: 1 / -1; font-size: .8rem; color: var(--accent); }
   .item.edited .name, .item.edited .cat { border-color: var(--accent); }
-  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .month-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .month-nav h2 { flex: 1; text-align: center; margin: 0; font-size: 1.15rem; }
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 16px; }
   .tile { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
-  .tile b { display: block; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+  .tile b { display: block; font-size: 1.2rem; font-variant-numeric: tabular-nums; }
   .tile span { font-size: .8rem; color: var(--muted); }
   .bar-row { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 8px 0; font: inherit; color: inherit; cursor: pointer; }
   .bar-row .top { display: flex; justify-content: space-between; gap: 8px; font-variant-numeric: tabular-nums; }
   .bar-row .track { height: 10px; background: var(--accent-soft); border-radius: 5px; margin-top: 4px; overflow: hidden; }
   .bar-row .fill { height: 100%; background: var(--accent); border-radius: 5px; }
-  .bar-row[aria-expanded="true"] .top { font-weight: 600; }
+  .bar-row[aria-expanded="true"] .top, .bar-row[aria-current="true"] .top { font-weight: 600; }
   table { width: 100%; border-collapse: collapse; font-size: .92rem; }
-  td, th { padding: 6px 4px; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  td { padding: 6px 4px; border-top: 1px solid var(--line); text-align: left; vertical-align: top; }
+  td.num, .num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
   .receipt-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; cursor: pointer; }
+  .cat-row { padding: 12px 0; border-top: 1px solid var(--line); }
+  .cat-row:first-child { border-top: 0; }
+  .cat-row .fields { display: grid; grid-template-columns: 1fr; gap: 6px; }
+  .cat-row .actions { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+  .cat-row .actions .muted { flex: 1; }
   .spinner { width: 18px; height: 18px; border: 3px solid var(--accent-soft); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   input[type=file] { display: none; }
@@ -70,6 +84,7 @@
       <button role="tab" data-tab="scan" aria-selected="true">Scan</button>
       <button role="tab" data-tab="dashboard" aria-selected="false">Spending</button>
       <button role="tab" data-tab="receipts" aria-selected="false">Receipts</button>
+      <button role="tab" data-tab="categories" aria-selected="false">Categories</button>
     </nav>
   </div>
 </header>
@@ -78,7 +93,7 @@
   <!-- Scan -->
   <section id="scan">
     <div class="card" id="pick">
-      <p style="margin-top:0">Photograph a receipt. Claude reads every line and sorts it into a category, and you check the result before it's saved. Fix a name or category once and it's remembered for future receipts.</p>
+      <p style="margin-top:0">Photograph a receipt. Claude reads every line and sorts it into one of your categories, and you check the result before it's saved. Fix a name or category once and it's remembered for future receipts.</p>
       <div class="row">
         <button class="btn primary big" id="camera-btn">📷 Take photo</button>
         <button class="btn big" id="upload-btn">Upload image</button>
@@ -90,10 +105,10 @@
     </div>
 
     <form class="card" id="review" hidden>
-      <h2 style="margin-top:0;font-size:1.05rem">Check the items</h2>
+      <h2>Check the items</h2>
       <div class="row">
         <div><label for="r-store">Store</label><input id="r-store"></div>
-        <div><label for="r-date">Date</label><input id="r-date" type="date" required></div>
+        <div><label for="r-date">Date of grocery run</label><input id="r-date" type="date" required></div>
       </div>
       <div id="r-items" style="margin-top:12px"></div>
       <button type="button" class="btn" id="add-item" style="margin:8px 0 16px">+ Add item</button>
@@ -111,27 +126,25 @@
 
   <!-- Dashboard -->
   <section id="dashboard" hidden>
-    <div class="row" style="margin-bottom:12px;align-items:end">
-      <div><label for="period">Period</label>
-        <select id="period">
-          <option value="this-month">This month</option>
-          <option value="last-month">Last month</option>
-          <option value="3-months">Last 3 months</option>
-          <option value="this-year">This year</option>
-          <option value="all" selected>All time</option>
-        </select>
-      </div>
-      <a class="btn" href="/api/export.csv" style="flex:0 0 auto;text-decoration:none">Export CSV</a>
+    <div class="month-nav">
+      <button class="btn icon" id="prev-month" aria-label="Previous month">‹</button>
+      <h2 id="month-label">–</h2>
+      <button class="btn icon" id="next-month" aria-label="Next month">›</button>
     </div>
-    <div class="tiles" style="margin-bottom:16px">
+    <div class="tiles">
       <div class="tile"><b id="t-total">–</b><span>spent on items</span></div>
-      <div class="tile"><b id="t-receipts">–</b><span>receipts</span></div>
+      <div class="tile"><b id="t-receipts">–</b><span>grocery runs</span></div>
       <div class="tile"><b id="t-tax">–</b><span>tax</span></div>
     </div>
     <div class="card">
-      <h2 style="margin-top:0;font-size:1.05rem">Where it goes</h2>
-      <p class="muted" style="margin-top:-6px;font-size:.9rem">Tap a category to see its items.</p>
+      <h2>Where it went</h2>
+      <p class="muted small" style="margin-top:-4px">Tap a category to see its items.</p>
       <div id="bars"></div>
+    </div>
+    <div class="card">
+      <h2>Month by month</h2>
+      <div id="month-list"></div>
+      <a class="btn small" href="/api/export.csv" style="margin-top:12px">Export all items as CSV</a>
     </div>
   </section>
 
@@ -139,32 +152,100 @@
   <section id="receipts" hidden>
     <div id="receipt-list"></div>
   </section>
+
+  <!-- Categories -->
+  <section id="categories" hidden>
+    <form class="card" id="new-cat">
+      <h2>Add a category</h2>
+      <p class="muted small" style="margin-top:-4px">Future receipts are sorted into it automatically. Describe what belongs there so Claude knows which items to put in it.</p>
+      <label for="nc-name">Name</label>
+      <input id="nc-name" maxlength="40" placeholder="e.g. Coffee" required>
+      <label for="nc-desc" style="margin-top:8px">What goes in it (optional but recommended)</label>
+      <input id="nc-desc" maxlength="300" placeholder="e.g. Coffee beans, ground and instant coffee, creamer">
+      <button class="btn primary" style="margin-top:12px">Add category</button>
+      <p id="nc-status" class="small" aria-live="polite"></p>
+    </form>
+    <div class="card">
+      <h2>Your categories</h2>
+      <div id="cat-list"></div>
+    </div>
+  </section>
 </main>
 
 <script>
 const $ = (sel) => document.querySelector(sel);
 let CATEGORIES = [];
 let currency = "USD";
+const NEW_CATEGORY = "__new__";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const money = (n, cur = currency) => {
   try { return new Intl.NumberFormat(undefined, { style: "currency", currency: cur }).format(n); }
   catch { return Number(n).toFixed(2); }
 };
-const catOptions = (selected) => CATEGORIES.map((c) => `<option ${c === selected ? "selected" : ""}>${esc(c)}</option>`).join("");
+const catOptions = (selected, { allowNew = true, exclude } = {}) =>
+  CATEGORIES.filter((c) => c.name !== exclude)
+    .map((c) => `<option ${c.name === selected ? "selected" : ""}>${esc(c.name)}</option>`).join("") +
+  (allowNew ? `<option value="${NEW_CATEGORY}">＋ New category…</option>` : "");
+const jsonOpts = (method, body) => ({ method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
 
 async function api(path, opts = {}) {
   const res = await fetch(path, opts);
   if (!res.ok) {
     let msg = `Request failed (${res.status})`;
-    try { const body = await res.json(); msg = typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail); } catch {}
+    try {
+      const body = await res.json();
+      msg = typeof body.detail === "string" ? body.detail : body.detail.map((d) => d.msg).join("; ");
+    } catch {}
     throw new Error(msg);
   }
   return res.status === 204 ? null : res.json();
 }
 
+// ---- Months ----
+const monthKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+const shiftMonth = (key, by) => { const [y, m] = key.split("-").map(Number); return monthKey(new Date(y, m - 1 + by, 1)); };
+const monthName = (key) => { const [y, m] = key.split("-").map(Number); return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" }); };
+let currentMonth = null;
+
+// ---- Categories (shared) ----
+async function loadCategories() {
+  CATEGORIES = await api("/api/categories");
+  // Keep every open category picker in sync without losing its selection.
+  document.querySelectorAll("select.cat").forEach((sel) => {
+    const value = sel.value;
+    sel.innerHTML = catOptions(value);
+    if (CATEGORIES.some((c) => c.name === value)) sel.value = value;
+  });
+}
+
+// Lets the user add a category straight from any item's picker.
+async function handleNewCategoryChoice(sel, previous) {
+  const name = prompt("New category name (e.g. Coffee):")?.trim();
+  if (!name) { sel.value = previous; return false; }
+  const description = prompt(`What belongs in “${name}”? This helps Claude sort future receipts. (optional)`) ?? "";
+  try {
+    await api("/api/categories", jsonOpts("POST", { name, description }));
+    await loadCategories();
+    sel.value = CATEGORIES.find((c) => c.name.toLowerCase() === name.toLowerCase()).name;
+    return true;
+  } catch (err) {
+    alert(err.message);
+    sel.value = previous;
+    return false;
+  }
+}
+document.addEventListener("focusin", (e) => { if (e.target.matches("select.cat")) e.target.dataset.prev = e.target.value; });
+document.addEventListener("change", async (e) => {
+  if (!e.target.matches("select.cat") || e.target.value !== NEW_CATEGORY) return;
+  e.stopImmediatePropagation();
+  if (await handleNewCategoryChoice(e.target, e.target.dataset.prev)) {
+    e.target.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+}, true);
+
 // ---- Tabs ----
-const views = { dashboard: loadDashboard, receipts: loadReceipts };
+const views = { dashboard: loadDashboard, receipts: loadReceipts, categories: renderCategories };
 document.querySelectorAll("nav button").forEach((btn) => btn.addEventListener("click", () => {
   document.querySelectorAll("nav button").forEach((b) => b.setAttribute("aria-selected", b === btn));
   document.querySelectorAll("main > section").forEach((s) => (s.hidden = s.id !== btn.dataset.tab));
@@ -243,8 +324,7 @@ function showReview(draft) {
   $("#r-date").value = draft.purchased_on || new Date().toISOString().slice(0, 10);
   $("#r-tax").value = draft.tax ?? 0;
   $("#r-total").value = draft.total ?? "";
-  const list = $("#r-items");
-  list.replaceChildren(...draft.items.map(itemRow));
+  $("#r-items").replaceChildren(...draft.items.map(itemRow));
   $("#review").dataset.currency = currency;
   $("#review").hidden = false;
   checkTotals();
@@ -289,64 +369,72 @@ $("#review").onsubmit = async (e) => {
     items: readItems(),
   };
   try {
-    await api("/api/receipts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    await api("/api/receipts", jsonOpts("POST", body));
+    currentMonth = body.purchased_on.slice(0, 7);
     $("#review").hidden = true;
     $("#preview").hidden = true;
     $("#scan-status").className = "muted";
-    $("#scan-status").textContent = `Saved ${body.items.length} items from ${body.store || "receipt"}. Scan another, or check the Spending tab.`;
+    $("#scan-status").textContent = `Saved ${body.items.length} items from ${body.store || "receipt"} to ${monthName(currentMonth)}. Scan another, or check the Spending tab.`;
   } catch (err) {
     alert(err.message);
   }
 };
 
-// ---- Dashboard ----
-function periodRange(p) {
-  const now = new Date();
-  const iso = (d) => d.toISOString().slice(0, 10);
-  const y = now.getFullYear(), m = now.getMonth();
-  switch (p) {
-    case "this-month": return { start: iso(new Date(Date.UTC(y, m, 1))) };
-    case "last-month": return { start: iso(new Date(Date.UTC(y, m - 1, 1))), end: iso(new Date(Date.UTC(y, m, 0))) };
-    case "3-months": return { start: iso(new Date(Date.UTC(y, m - 2, 1))) };
-    case "this-year": return { start: `${y}-01-01` };
-    default: return {};
-  }
-}
-const query = (params) => new URLSearchParams(Object.entries(params).filter(([, v]) => v)).toString();
-$("#period").onchange = loadDashboard;
+// ---- Spending (one month at a time) ----
+$("#prev-month").onclick = () => { currentMonth = shiftMonth(currentMonth, -1); loadDashboard(); };
+$("#next-month").onclick = () => { currentMonth = shiftMonth(currentMonth, 1); loadDashboard(); };
 
 async function loadDashboard() {
-  const range = periodRange($("#period").value);
-  const s = await api(`/api/summary?${query(range)}`);
+  const months = await api("/api/months");
+  // Open on the latest month with receipts so the first view is never empty.
+  currentMonth ??= months[0]?.month ?? monthKey(new Date());
+  $("#month-label").textContent = monthName(currentMonth);
+  $("#next-month").disabled = currentMonth >= monthKey(new Date()) && currentMonth >= (months[0]?.month ?? "");
+
+  const s = await api(`/api/summary?month=${currentMonth}`);
   $("#t-total").textContent = money(s.items_total);
   $("#t-receipts").textContent = s.receipt_count;
   $("#t-tax").textContent = money(s.tax);
   const bars = $("#bars");
   if (!s.by_category.length) {
-    bars.innerHTML = `<p class="muted">No receipts in this period yet. Scan one to get started.</p>`;
-    return;
+    bars.innerHTML = `<p class="muted">No receipts in ${esc(monthName(currentMonth))}.</p>`;
+  } else {
+    const max = s.by_category[0].total;
+    bars.innerHTML = s.by_category.map((c) => `
+      <button class="bar-row" data-cat="${esc(c.category)}" aria-expanded="false">
+        <div class="top"><span>${esc(c.category)}</span><span>${money(c.total)} <span class="muted">· ${Math.round(c.share * 100)}%</span></span></div>
+        <div class="track"><div class="fill" style="width:${(c.total / max) * 100}%"></div></div>
+      </button>
+      <div class="cat-items" hidden></div>`).join("");
+    bars.querySelectorAll(".bar-row").forEach((btn) => btn.onclick = async () => {
+      const panel = btn.nextElementSibling;
+      const open = btn.getAttribute("aria-expanded") === "true";
+      btn.setAttribute("aria-expanded", !open);
+      panel.hidden = open;
+      if (open) return;
+      const items = await api(`/api/items?month=${currentMonth}&category=${encodeURIComponent(btn.dataset.cat)}`);
+      panel.innerHTML = `<table><tbody>${items.map((i) => `
+        <tr><td>${esc(i.name)}<div class="muted" style="font-size:.8rem">${esc(i.purchased_on)} · ${esc(i.store || "")}</div></td>
+        <td class="num">${money(i.price)}</td></tr>`).join("")}</tbody></table>`;
+    });
   }
-  const max = s.by_category[0].total;
-  bars.innerHTML = s.by_category.map((c) => `
-    <button class="bar-row" data-cat="${esc(c.category)}" aria-expanded="false">
-      <div class="top"><span>${esc(c.category)}</span><span>${money(c.total)} <span class="muted">· ${Math.round(c.share * 100)}%</span></span></div>
-      <div class="track"><div class="fill" style="width:${(c.total / max) * 100}%"></div></div>
-    </button>
-    <div class="cat-items" hidden></div>`).join("");
-  bars.querySelectorAll(".bar-row").forEach((btn) => btn.onclick = async () => {
-    const panel = btn.nextElementSibling;
-    const open = btn.getAttribute("aria-expanded") === "true";
-    btn.setAttribute("aria-expanded", !open);
-    panel.hidden = open;
-    if (open) return;
-    const items = await api(`/api/items?${query({ ...range, category: btn.dataset.cat })}`);
-    panel.innerHTML = `<table><tbody>${items.map((i) => `
-      <tr><td>${esc(i.name)}<div class="muted" style="font-size:.8rem">${esc(i.purchased_on)} · ${esc(i.store || "")}</div></td>
-      <td class="num">${money(i.price)}</td></tr>`).join("")}</tbody></table>`;
+
+  const list = $("#month-list");
+  if (!months.length) { list.innerHTML = `<p class="muted">Nothing yet. Scan a receipt to get started.</p>`; return; }
+  const maxMonth = Math.max(...months.map((m) => m.items_total));
+  list.innerHTML = months.map((m) => `
+    <button class="bar-row" data-month="${m.month}" aria-current="${m.month === currentMonth}">
+      <div class="top"><span>${esc(monthName(m.month))} <span class="muted small">· ${m.receipt_count} run${m.receipt_count === 1 ? "" : "s"}</span></span><span>${money(m.items_total)}</span></div>
+      <div class="track"><div class="fill" style="width:${maxMonth ? (m.items_total / maxMonth) * 100 : 0}%"></div></div>
+    </button>`).join("");
+  list.querySelectorAll(".bar-row").forEach((btn) => btn.onclick = () => {
+    currentMonth = btn.dataset.month;
+    loadDashboard();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   });
 }
 
-// ---- Receipts ----
+// ---- Receipts (grouped by month) ----
 async function loadReceipts() {
   const list = $("#receipt-list");
   const receipts = await api("/api/receipts");
@@ -354,13 +442,20 @@ async function loadReceipts() {
     list.innerHTML = `<p class="muted">No receipts saved yet.</p>`;
     return;
   }
-  list.innerHTML = receipts.map((r) => `
+  const groups = new Map();
+  for (const r of receipts) {
+    const month = r.purchased_on.slice(0, 7);
+    groups.set(month, [...(groups.get(month) ?? []), r]);
+  }
+  list.innerHTML = [...groups].map(([month, rs]) => `
+    <h3><span>${esc(monthName(month))}</span><span class="num">${money(rs.reduce((s, r) => s + r.items_total + r.tax, 0), rs[0].currency)}</span></h3>
+    ${rs.map((r) => `
     <div class="card" data-id="${r.id}">
       <div class="receipt-head"><div><b>${esc(r.store || "Unknown store")}</b> <span class="muted">· ${esc(r.purchased_on)}</span></div>
       <div class="num">${money(r.total ?? r.items_total + r.tax, r.currency)}</div></div>
-      <div class="muted" style="font-size:.9rem">${r.item_count} items</div>
+      <div class="muted small">${r.item_count} items · tap to edit</div>
       <div class="detail" hidden></div>
-    </div>`).join("");
+    </div>`).join("")}`).join("");
   list.querySelectorAll(".card").forEach((card) => card.querySelector(".receipt-head").onclick = () => toggleReceipt(card));
 }
 
@@ -369,29 +464,120 @@ async function toggleReceipt(card) {
   if (!detail.hidden) { detail.hidden = true; return; }
   const r = await api(`/api/receipts/${card.dataset.id}`);
   detail.innerHTML = `
-    <p class="muted" style="font-size:.85rem;margin:8px 0 0">Edit any field; changes save automatically.</p>
+    <div class="row" style="margin-top:12px">
+      <div><label>Store</label><input class="r-field" data-field="store" value="${esc(r.store)}"></div>
+      <div><label>Date of grocery run</label><input class="r-field" data-field="purchased_on" type="date" value="${esc(r.purchased_on)}" required></div>
+    </div>
+    <p class="r-saved small ok" aria-live="polite" style="margin:6px 0 0"></p>
+    <p class="muted small" style="margin:8px 0 0">Edit any field; changes save automatically.</p>
     ${r.items.map((i) => `<div class="item" data-item="${i.id}">${itemFields(i)}<span class="saved" aria-live="polite"></span></div>`).join("")}
-    <p class="muted" style="margin:8px 0 0">Tax: ${money(r.tax, r.currency)}</p>
+    <div class="row" style="margin-top:8px">
+      <div><label>Tax</label><input class="r-field" data-field="tax" type="number" step="0.01" inputmode="decimal" value="${esc(r.tax)}"></div>
+      <div><label>Receipt total</label><input class="r-field" data-field="total" type="number" step="0.01" inputmode="decimal" value="${esc(r.total ?? "")}"></div>
+    </div>
     <button class="btn danger" style="margin-top:12px">Delete receipt</button>`;
+
+  detail.querySelectorAll(".r-field").forEach((input) => input.onchange = async () => {
+    const field = input.dataset.field;
+    let value = input.value.trim();
+    if (field === "tax" || field === "total") value = value === "" ? null : Number(value);
+    if (field === "store") value = value || null;
+    const note = detail.querySelector(".r-saved");
+    try {
+      await api(`/api/receipts/${r.id}`, jsonOpts("PATCH", { [field]: value }));
+      if (field === "purchased_on" && value.slice(0, 7) !== r.purchased_on.slice(0, 7)) {
+        currentMonth = value.slice(0, 7);
+        alert(`Moved to ${monthName(currentMonth)}.`);
+        loadReceipts();
+        return;
+      }
+      note.textContent = "Saved";
+    } catch (err) { note.textContent = ""; alert(err.message); }
+  });
+
   detail.querySelectorAll(".item").forEach((row) => row.onchange = async (e) => {
     const field = { name: "name", qty: "quantity", price: "price", cat: "category" }[e.target.className];
     if (!field) return;
     const value = field === "name" || field === "category" ? e.target.value.trim() : Number(e.target.value);
     const note = row.querySelector(".saved");
     try {
-      await api(`/api/items/${row.dataset.item}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ [field]: value }) });
+      await api(`/api/items/${row.dataset.item}`, jsonOpts("PATCH", { [field]: value }));
       note.textContent = field === "name" || field === "category" ? "Saved — will be remembered for next time" : "Saved";
     } catch (err) { note.textContent = ""; alert(err.message); }
   });
+
   detail.querySelector(".btn.danger").onclick = async () => {
     if (!confirm("Delete this receipt and all its items?")) return;
     await api(`/api/receipts/${card.dataset.id}`, { method: "DELETE" });
-    card.remove();
+    loadReceipts();
   };
   detail.hidden = false;
 }
 
-api("/api/categories").then((cats) => (CATEGORIES = cats.map((c) => c.name)));
+// ---- Categories tab ----
+$("#new-cat").onsubmit = async (e) => {
+  e.preventDefault();
+  const status = $("#nc-status");
+  try {
+    const c = await api("/api/categories", jsonOpts("POST", { name: $("#nc-name").value, description: $("#nc-desc").value }));
+    $("#nc-name").value = $("#nc-desc").value = "";
+    status.className = "small ok";
+    status.textContent = `Added “${c.name}”. New receipts will be sorted into it.`;
+    await loadCategories();
+    renderCategories();
+  } catch (err) {
+    status.className = "small error";
+    status.textContent = err.message;
+  }
+};
+
+async function renderCategories() {
+  await loadCategories();
+  const list = $("#cat-list");
+  list.innerHTML = CATEGORIES.map((c) => `
+    <div class="cat-row" data-id="${c.id}">
+      <div class="fields">
+        <input class="c-name" aria-label="Category name" maxlength="40" value="${esc(c.name)}" ${c.locked ? "disabled" : ""}>
+        <input class="c-desc" aria-label="What goes in ${esc(c.name)}" maxlength="300" placeholder="What goes in this category?" value="${esc(c.description)}">
+      </div>
+      <div class="actions">
+        <span class="muted small">${c.item_count} item${c.item_count === 1 ? "" : "s"}${c.locked ? " · catch-all, can't be renamed or deleted" : ""}</span>
+        <button class="btn small c-save" disabled>Save</button>
+        ${c.locked ? "" : `<button class="btn small danger c-del">Delete</button>`}
+      </div>
+      <div class="c-confirm" hidden></div>
+    </div>`).join("");
+
+  list.querySelectorAll(".cat-row").forEach((row) => {
+    const c = CATEGORIES.find((x) => x.id === Number(row.dataset.id));
+    const name = row.querySelector(".c-name"), desc = row.querySelector(".c-desc"), save = row.querySelector(".c-save");
+    row.oninput = () => { save.disabled = name.value.trim() === c.name && desc.value.trim() === c.description; };
+    save.onclick = async () => {
+      try {
+        await api(`/api/categories/${c.id}`, jsonOpts("PATCH", { name: name.value, description: desc.value }));
+        renderCategories();
+      } catch (err) { alert(err.message); }
+    };
+    row.querySelector(".c-del")?.addEventListener("click", () => {
+      const box = row.querySelector(".c-confirm");
+      box.hidden = false;
+      box.innerHTML = `
+        <p class="warn" style="margin:8px 0">Delete “${esc(c.name)}”?${c.item_count ? ` Its ${c.item_count} item${c.item_count === 1 ? "" : "s"} will move to:` : ""}</p>
+        ${c.item_count ? `<select class="c-move" aria-label="Move items to">${catOptions("Other", { allowNew: false, exclude: c.name })}</select>` : ""}
+        <div class="actions"><button class="btn small c-cancel">Cancel</button><button class="btn small primary c-confirm-del">Delete</button></div>`;
+      box.querySelector(".c-cancel").onclick = () => { box.hidden = true; };
+      box.querySelector(".c-confirm-del").onclick = async () => {
+        const moveTo = box.querySelector(".c-move")?.value ?? "Other";
+        try {
+          await api(`/api/categories/${c.id}?move_to=${encodeURIComponent(moveTo)}`, { method: "DELETE" });
+          renderCategories();
+        } catch (err) { alert(err.message); }
+      };
+    });
+  });
+}
+
+loadCategories();
 </script>
 </body>
 </html>

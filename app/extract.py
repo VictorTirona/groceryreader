@@ -5,51 +5,51 @@ import json
 
 import anthropic
 
-from .categories import CATEGORIES, CATEGORY_NAMES
 from .db import normalize_raw
 
 MODEL = "claude-opus-5-5"
 
 SUPPORTED_MEDIA_TYPES = {"image/jpeg", "image/png", "image/gif", "image/webp"}
 
-RECEIPT_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "readable": {
-            "type": "boolean",
-            "description": "False if the image is not a receipt or is too blurry to read.",
-        },
-        "store": {"type": ["string", "null"]},
-        "purchased_on": {
-            "type": ["string", "null"],
-            "description": "Purchase date as YYYY-MM-DD, or null if not printed.",
-        },
-        "currency": {"type": "string", "description": "ISO 4217 code, e.g. USD."},
-        "items": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "name": {"type": "string"},
-                    "raw_text": {"type": "string"},
-                    "quantity": {"type": "number"},
-                    "price": {"type": "number"},
-                    "category": {"type": "string", "enum": CATEGORY_NAMES},
-                },
-                "required": ["name", "raw_text", "quantity", "price", "category"],
-                "additionalProperties": False,
+
+def build_schema(category_names: list[str]) -> dict:
+    return {
+        "type": "object",
+        "properties": {
+            "readable": {
+                "type": "boolean",
+                "description": "False if the image is not a receipt or is too blurry to read.",
             },
+            "store": {"type": ["string", "null"]},
+            "purchased_on": {
+                "type": ["string", "null"],
+                "description": "Purchase date as YYYY-MM-DD, or null if not printed.",
+            },
+            "currency": {"type": "string", "description": "ISO 4217 code, e.g. USD."},
+            "items": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "raw_text": {"type": "string"},
+                        "quantity": {"type": "number"},
+                        "price": {"type": "number"},
+                        "category": {"type": "string", "enum": category_names},
+                    },
+                    "required": ["name", "raw_text", "quantity", "price", "category"],
+                    "additionalProperties": False,
+                },
+            },
+            "tax": {"type": "number"},
+            "total": {"type": ["number", "null"]},
         },
-        "tax": {"type": "number"},
-        "total": {"type": ["number", "null"]},
-    },
-    "required": ["readable", "store", "purchased_on", "currency", "items", "tax", "total"],
-    "additionalProperties": False,
-}
+        "required": ["readable", "store", "purchased_on", "currency", "items", "tax", "total"],
+        "additionalProperties": False,
+    }
 
-_category_guide = "\n".join(f"- {name}: {desc}" for name, desc in CATEGORIES.items())
 
-PROMPT = f"""Read this grocery receipt and list every purchased item.
+PROMPT = """Read this grocery receipt and list every purchased item.
 
 For each item:
 - name: a plain-English product name. Expand store abbreviations when you are reasonably
@@ -59,8 +59,9 @@ For each item:
 - quantity: the count or weight purchased (1 if not shown).
 - price: the final amount paid for the line. Subtract any coupon, member discount or
   markdown printed under it, so discounts never appear as their own items.
-- category: one of these:
-{_category_guide}
+- category: one of the shopper's categories below. Some are their own, so follow each
+  description. When an item fits more than one, choose the most specific.
+{categories}
 
 Put sales tax in `tax` (0 if none) and the receipt's grand total in `total`. Leave out
 subtotals, payment lines, change and loyalty-point lines. Bottle deposits and bag fees go
@@ -77,11 +78,13 @@ class ExtractionError(Exception):
     """The receipt could not be turned into line items."""
 
 
-def build_prompt(corrections: dict[str, dict]) -> str:
+def build_prompt(categories: dict[str, str], corrections: dict[str, dict]) -> str:
+    guide = "\n".join(f"- {name}: {desc}" if desc else f"- {name}" for name, desc in categories.items())
+    prompt = PROMPT.format(categories=guide)
     if not corrections:
-        return PROMPT
+        return prompt
     lines = "\n".join(f"- {raw} -> {c['name']} ({c['category']})" for raw, c in corrections.items())
-    return PROMPT + "\n" + CORRECTIONS_INTRO + lines
+    return prompt + "\n" + CORRECTIONS_INTRO + lines
 
 
 def apply_corrections(items: list[dict], corrections: dict[str, dict]) -> None:
@@ -96,6 +99,7 @@ def apply_corrections(items: list[dict], corrections: dict[str, dict]) -> None:
 def extract_receipt(
     image: bytes,
     media_type: str,
+    categories: dict[str, str],
     client: anthropic.Anthropic | None = None,
     corrections: dict[str, dict] | None = None,
 ) -> dict:
@@ -111,7 +115,7 @@ def extract_receipt(
             fallbacks="default",
             output_config={
                 "effort": "medium",
-                "format": {"type": "json_schema", "schema": RECEIPT_SCHEMA},
+                "format": {"type": "json_schema", "schema": build_schema(list(categories))},
             },
             messages=[
                 {
@@ -125,7 +129,7 @@ def extract_receipt(
                                 "data": base64.standard_b64encode(image).decode("ascii"),
                             },
                         },
-                        {"type": "text", "text": build_prompt(corrections or {})},
+                        {"type": "text", "text": build_prompt(categories, corrections or {})},
                     ],
                 }
             ],

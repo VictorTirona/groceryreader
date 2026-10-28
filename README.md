@@ -26,6 +26,20 @@ is stored against the printed text `MGN CHPS`. On every later scan:
 
 Edits you make later in the **Receipts** tab are remembered the same way.
 
+### Your own categories
+
+The app starts with 14 categories (Meat & Seafood, Produce, Snacks & Sweets, …). In the
+**Categories** tab you can add your own, rename or describe existing ones, and delete ones you
+don't use (their items move to a category you pick). You can also choose **＋ New category…** from
+any item's category picker while reviewing a scan.
+
+Every scan sends Claude your current category list with each description, and Claude may only
+answer with one of those names. Write a short description of what belongs in a new category
+(e.g. *Coffee: beans, ground and instant coffee, creamer*) so Claude knows when to use it.
+When an item fits more than one category, Claude is told to pick the most specific one, so
+"Coffee" wins over "Beverages" for a jar of Nescafé. Only new scans use a new category; items
+you already saved keep theirs unless you change them.
+
 ## Running it
 
 Requires Python 3.10+ and an Anthropic API key (get one at https://console.anthropic.com/).
@@ -48,12 +62,13 @@ Data lives in `data/groceries.db` (SQLite). Set `GROCERY_DB_PATH` to put it some
 
 - **Scan**: take or upload a photo, check the items (the app warns if items + tax don't add
   up to the printed total), then save.
-- **Spending**: totals per category for a chosen period. Tap a category to see its items.
-  **Export CSV** downloads every item for use in a spreadsheet.
-- **Receipts**: every saved receipt. Edit items in place (changes save automatically) or delete
-  a receipt.
-
-Categories are defined in `app/categories.py`. Edit that file to add or rename one.
+- **Spending**: one month at a time. Use ‹ › to step between months; it opens on the latest
+  month with receipts. Tap a category to see its items. **Month by month** lists every month's
+  total; tap one to jump to it. **Export all items as CSV** downloads everything for a spreadsheet.
+- **Receipts**: saved receipts grouped by month. Tap one to edit its store, the date of the
+  grocery run, tax, total or any item (changes save automatically). Changing the date moves
+  the receipt to the right month.
+- **Categories**: add, rename, describe or delete categories.
 
 ## Cost
 

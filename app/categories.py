@@ -1,6 +1,6 @@
-"""The fixed set of spending categories every receipt line is sorted into."""
+"""Starter categories. They are copied into the database once and can then be edited in the app."""
 
-CATEGORIES: dict[str, str] = {
+DEFAULT_CATEGORIES: dict[str, str] = {
     "Meat & Seafood": "Fresh or packaged meat, poultry, fish, shellfish, deli meats, sausages",
     "Produce": "Fresh fruit, vegetables, herbs, salad kits",
     "Dairy & Eggs": "Milk, cheese, yogurt, butter, cream, eggs, plant milks",
@@ -17,4 +17,5 @@ CATEGORIES: dict[str, str] = {
     "Other": "Anything that does not fit the categories above (deposits, gift cards, fees)",
 }
 
-CATEGORY_NAMES: list[str] = list(CATEGORIES)
+# Catch-all that items fall back to when their category is deleted. It cannot be renamed or deleted.
+FALLBACK_CATEGORY = "Other"
